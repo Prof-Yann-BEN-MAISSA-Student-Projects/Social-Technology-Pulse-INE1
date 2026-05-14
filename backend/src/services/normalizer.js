@@ -1,7 +1,4 @@
-/**
- * Format unifié pour toutes les sources :
- * { id, title, url, score, source, fetchedAt, meta }
- */
+import { extractKeywords } from './keywords.extractor.js';
 
 export function normalizeReddit(post, subreddit) {
   const d = post.data;
@@ -12,6 +9,7 @@ export function normalizeReddit(post, subreddit) {
     score:     d.score,
     source:    'reddit',
     fetchedAt: new Date().toISOString(),
+    keywords:  extractKeywords(d.title),
     meta: {
       subreddit,
       comments:  d.num_comments,
@@ -30,6 +28,7 @@ export function normalizeHackerNews(item) {
     score:     item.score ?? 0,
     source:    'hackernews',
     fetchedAt: new Date().toISOString(),
+    keywords:  extractKeywords(item.title),
     meta: {
       comments: item.descendants ?? 0,
       author:   item.by,
@@ -39,6 +38,13 @@ export function normalizeHackerNews(item) {
 }
 
 export function normalizeGitHub(repo) {
+  // Extraire depuis le nom, la description et les topics pour plus de précision
+  const text = [
+    repo.full_name,
+    repo.description ?? '',
+    ...(repo.topics ?? [])
+  ].join(' ');
+
   return {
     id:        `github_${repo.id}`,
     title:     repo.full_name,
@@ -46,6 +52,7 @@ export function normalizeGitHub(repo) {
     score:     repo.stargazers_count,
     source:    'github',
     fetchedAt: new Date().toISOString(),
+    keywords:  extractKeywords(text),
     meta: {
       description: repo.description,
       language:    repo.language,

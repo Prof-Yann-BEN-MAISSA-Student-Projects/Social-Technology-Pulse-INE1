@@ -3,16 +3,17 @@
   "version": "1.0.0",
   "description": "Social Pulse INPT — backend Express pour la visualisation de tendances tech",
   "type": "module",
-  "main": "src/server.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "start": "node server.js",
+    "dev": "node --watch server.js"
   },
   "dependencies": {
     "axios": "^1.7.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "mongoose": "^9.6.2",
     "node-cron": "^3.0.3"
   }
 }
