@@ -4,7 +4,7 @@ import { USER_AGENT } from '../config/sources.config.js';
 const client = axios.create({ timeout: 10_000 });
 
 client.interceptors.request.use((config) => {
-  config.headers['User-Agent'] = USER_AGENT;
+  if (!config.headers['User-Agent']) config.headers['User-Agent'] = USER_AGENT;
   return config;
 });
 
