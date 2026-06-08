@@ -1,4 +1,5 @@
 import { Item } from '../models/item.model.js';
+import { Snapshot } from '../models/snapshot.model.js';
 import { isConnected } from './db.js';
 
 const store = {
@@ -39,8 +40,16 @@ export async function upsert(source, items) {
       },
     }));
     await Item.bulkWrite(ops);
+
+    const snapshots = items.map((item) => ({
+      externalId: item.id,
+      source:     item.source,
+      score:      item.score,
+      fetchedAt:  new Date(item.fetchedAt),
+    }));
+    await Snapshot.insertMany(snapshots, { ordered: false });
   } catch (err) {
-    console.error('[store] MongoDB bulkWrite failed:', err.message);
+    console.error('[store] MongoDB write failed:', err.message);
   }
 }
 
