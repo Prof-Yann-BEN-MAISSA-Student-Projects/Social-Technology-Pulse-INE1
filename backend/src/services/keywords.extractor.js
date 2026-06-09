@@ -5,6 +5,11 @@ const KEYWORDS = [
   // Frontend
   'react', 'vue', 'angular', 'svelte', 'nextjs', 'nuxt', 'remix', 'astro',
   'htmx', 'tailwind', 'solidjs',
+  // Mobile
+  'flutter', 'react native', 'swiftui', 'jetpack compose', 'ionic', 'expo',
+  'xamarin', 'android', 'ios', 'capacitor',
+  // Hardware / IoT / embarqué
+  'arduino', 'esp32', 'raspberry pi', 'micropython', 'platformio',
   // Backend
   'express', 'fastapi', 'django', 'flask', 'spring', 'rails', 'laravel',
   'nestjs', 'fiber', 'gin', 'actix', 'axum',
@@ -28,11 +33,15 @@ const KEYWORDS = [
 ];
 
 const ALIASES = {
-  'next.js':    'nextjs',
-  'node.js':    'nodejs',
-  'solid.js':   'solidjs',
-  'tensorflow': 'tensorflow',
-  'scikit-learn': 'machine learning',
+  'next.js':       'nextjs',
+  'node.js':       'nodejs',
+  'solid.js':      'solidjs',
+  'tensorflow':    'tensorflow',
+  'scikit-learn':  'machine learning',
+  'react-native':  'react native',
+  'reactnative':   'react native',
+  'raspberry-pi':  'raspberry pi',
+  'rpi':           'raspberry pi',
 };
 
 function escapeRegex(s) {

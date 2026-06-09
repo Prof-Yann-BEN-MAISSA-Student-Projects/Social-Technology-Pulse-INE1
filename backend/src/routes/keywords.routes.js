@@ -11,41 +11,82 @@ function requireDB(req, res, next) {
   next();
 }
 
-// GET /api/keywords/top?limit=20&hours=24&source=reddit
-// Top mots-clés par nombre de mentions dans la fenêtre temporelle
+// GET /api/keywords/top?limit=30&hours=168&source=reddit&country=FR
 router.get('/top', requireDB, async (req, res) => {
   try {
-    const limit  = Math.min(parseInt(req.query.limit ?? '20', 10), 100);
-    const hours  = Math.min(parseInt(req.query.hours ?? '24', 10), 720);
+    const limit  = Math.min(parseInt(req.query.limit ?? '30', 10), 100);
+    const hours  = Math.min(parseInt(req.query.hours ?? '168', 10), 720);
     const since  = new Date(Date.now() - hours * 3_600_000);
     const match  = { fetchedAt: { $gte: since } };
-    if (req.query.source) match.source = req.query.source;
+    if (req.query.source)  match.source  = req.query.source;
+    if (req.query.country) match.country = req.query.country;
 
-    const results = await Item.aggregate([
+    // Max de score par source pour normaliser 
+    const maxRows = await Item.aggregate([
       { $match: match },
+      { $group: { _id: '$source', max: { $max: '$score' } } },
+    ]);
+    const srcMax = { reddit: 1, hackernews: 1, github: 1 };
+    for (const r of maxRows) if (r._id in srcMax) srcMax[r._id] = r.max || 1;
+
+    // Score normalisé 
+    const normScore = {
+      $let: {
+        vars: {
+          m: { $switch: { branches: [
+            { case: { $eq: ['$source', 'reddit'] },     then: srcMax.reddit },
+            { case: { $eq: ['$source', 'hackernews'] }, then: srcMax.hackernews },
+            { case: { $eq: ['$source', 'github'] },     then: srcMax.github },
+          ], default: 1 } },
+        },
+        in: {
+          $cond: [
+            { $gt: ['$$m', 0] },
+            { $multiply: [100, { $divide: [
+              { $ln: { $add: [{ $max: ['$score', 0] }, 1] } },
+              { $ln: { $add: ['$$m', 1] } },
+            ] }] },
+            0,
+          ],
+        },
+      },
+    };
+
+    const rows = await Item.aggregate([
+      { $match: match },
+      { $addFields: { normScore } },
       { $unwind: '$keywords' },
+      // 1er regroupement : (mot-clé, source)
       {
         $group: {
-          _id:        '$keywords',
-          count:      { $sum: 1 },
+          _id:   { kw: '$keywords', source: '$source' },
+          count: { $sum: 1 },
+          score: { $sum: '$normScore' },
+        },
+      },
+      // 2e regroupement : mot-clé global
+      {
+        $group: {
+          _id:        '$_id.kw',
+          count:      { $sum: '$count' },
           totalScore: { $sum: '$score' },
-          sources:    { $addToSet: '$source' },
+          sources:    { $addToSet: '$_id.source' },
+          bySource:   { $push: { source: '$_id.source', count: '$count', score: '$score' } },
         },
       },
       { $sort: { count: -1 } },
       { $limit: limit },
-      {
-        $project: {
-          _id:        0,
-          keyword:    '$_id',
-          count:      1,
-          totalScore: 1,
-          sources:    1,
-        },
-      },
+      { $project: { _id: 0, keyword: '$_id', count: 1, totalScore: { $round: ['$totalScore', 0] }, sources: 1, bySource: 1 } },
     ]);
 
-    res.json({ window: `${hours}h`, total: results.length, keywords: results });
+    // Normalise bySource en objet { reddit, hackernews, github }
+    const keywords = rows.map((k) => {
+      const bySource = { reddit: 0, hackernews: 0, github: 0 };
+      for (const s of k.bySource) bySource[s.source] = s.count;
+      return { ...k, bySource };
+    });
+
+    res.json({ window: `${hours}h`, country: req.query.country ?? 'all', total: keywords.length, keywords });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -55,13 +96,14 @@ router.get('/top', requireDB, async (req, res) => {
 // Mots-clés en hausse : compare les 24h les plus récentes vs les 24h précédentes
 router.get('/trending', requireDB, async (req, res) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit ?? '20', 10), 100);
-    const now   = Date.now();
-    const DAY   = 86_400_000;
+    const limit   = Math.min(parseInt(req.query.limit ?? '20', 10), 100);
+    const country = req.query.country ?? null;
+    const now     = Date.now();
+    const DAY     = 86_400_000;
 
     const [recent, previous] = await Promise.all([
-      aggregateWindow(new Date(now - DAY),     new Date(now)),
-      aggregateWindow(new Date(now - 2 * DAY), new Date(now - DAY)),
+      aggregateWindow(new Date(now - DAY),     new Date(now),         country),
+      aggregateWindow(new Date(now - 2 * DAY), new Date(now - DAY),   country),
     ]);
 
     const prevMap = new Map(previous.map((k) => [k.keyword, k.count]));
@@ -91,12 +133,14 @@ router.get('/:kw/history', requireDB, async (req, res) => {
   try {
     const days  = Math.min(parseInt(req.query.days ?? '7', 10), 30);
     const since = new Date(Date.now() - days * 86_400_000);
+    const match = { keywords: req.params.kw, createdAt: { $gte: since } };
+    if (req.query.country) match.country = req.query.country;
 
     const history = await Item.aggregate([
-      { $match: { keywords: req.params.kw, fetchedAt: { $gte: since } } },
+      { $match: match },
       {
         $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$fetchedAt' } },
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
           count:    { $sum: 1 },
           avgScore: { $avg: '$score' },
           sources:  { $addToSet: '$source' },
@@ -120,9 +164,11 @@ router.get('/:kw/history', requireDB, async (req, res) => {
   }
 });
 
-async function aggregateWindow(from, to) {
+async function aggregateWindow(from, to, country = null) {
+  const match = { createdAt: { $gte: from, $lt: to } };
+  if (country) match.country = country;
   return Item.aggregate([
-    { $match: { fetchedAt: { $gte: from, $lt: to } } },
+    { $match: match },
     { $unwind: '$keywords' },
     { $group: { _id: '$keywords', count: { $sum: 1 } } },
     { $project: { _id: 0, keyword: '$_id', count: 1 } },

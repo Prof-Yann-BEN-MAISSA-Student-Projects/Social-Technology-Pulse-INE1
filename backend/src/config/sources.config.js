@@ -4,6 +4,17 @@ export const REDDIT_SUBS = process.env.REDDIT_SUBREDDITS
 
 export const REDDIT_SORTS = ['hot', 'rising'];
 
+// Subreddits rattachés à un pays sinon GLOBAL.
+export const REDDIT_COUNTRY_SUBS = {
+  developpeurs:   'FR',
+  programmation:  'FR',
+  Moroccopreneur: 'MA',
+};
+
+export function countryForSub(sub) {
+  return REDDIT_COUNTRY_SUBS[sub] ?? 'GLOBAL';
+}
+
 export const POLL_INTERVALS = {
   reddit:     '*/5 * * * *',
   hackernews: '*/3 * * * *',

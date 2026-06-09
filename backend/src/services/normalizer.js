@@ -1,6 +1,6 @@
 import { extractKeywords } from './keywords.extractor.js';
 
-export function normalizeReddit(post, subreddit) {
+export function normalizeReddit(post, subreddit, country = 'GLOBAL') {
   const d = post.data;
   return {
     id:        `reddit_${d.id}`,
@@ -8,6 +8,7 @@ export function normalizeReddit(post, subreddit) {
     url:       d.url,
     score:     d.score,
     source:    'reddit',
+    country,
     fetchedAt: new Date().toISOString(),
     keywords:  extractKeywords(d.title),
     meta: {
@@ -27,6 +28,7 @@ export function normalizeHackerNews(item) {
     url:       item.url ?? `https://news.ycombinator.com/item?id=${item.id}`,
     score:     item.score ?? 0,
     source:    'hackernews',
+    country:   'GLOBAL',
     fetchedAt: new Date().toISOString(),
     keywords:  extractKeywords(item.title),
     meta: {
@@ -38,7 +40,6 @@ export function normalizeHackerNews(item) {
 }
 
 export function normalizeGitHub(repo) {
-  // Extraire depuis le nom, la description et les topics pour plus de précision
   const text = [
     repo.full_name,
     repo.description ?? '',
@@ -51,6 +52,7 @@ export function normalizeGitHub(repo) {
     url:       repo.html_url,
     score:     repo.stargazers_count,
     source:    'github',
+    country:   'GLOBAL',
     fetchedAt: new Date().toISOString(),
     keywords:  extractKeywords(text),
     meta: {

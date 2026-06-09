@@ -31,6 +31,7 @@ export async function upsert(source, items) {
             url:        item.url,
             score:      item.score,
             source:     item.source,
+            country:    item.country ?? 'GLOBAL',
             fetchedAt:  new Date(item.fetchedAt),
             keywords:   item.keywords ?? [],
             meta:       item.meta,
@@ -67,9 +68,15 @@ export function getBySource(source, { keyword } = {}) {
 }
 
 export function getTopN(n = 50, { keyword } = {}) {
-  const all = Object.values(store).flat().sort((a, b) => b.score - a.score);
+  const srcMax = {};
+  for (const [src, items] of Object.entries(store)) {
+    srcMax[src] = Math.max(1, ...items.map((i) => i.score || 0));
+  }
+  const norm = (i) => Math.log1p(Math.max(0, i.score || 0)) / Math.log1p(srcMax[i.source] || 1);
+
+  const all = Object.values(store).flat();
   const filtered = keyword ? all.filter((i) => i.keywords?.includes(keyword)) : all;
-  return filtered.slice(0, n);
+  return [...filtered].sort((a, b) => norm(b) - norm(a)).slice(0, n);
 }
 
 export function getCounts() {

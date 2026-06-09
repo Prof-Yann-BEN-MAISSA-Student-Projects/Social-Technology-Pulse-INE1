@@ -1,7 +1,11 @@
 import client from '../http.client.js';
 import { redditLimiter } from '../ratelimit.js';
 import { normalizeReddit } from '../normalizer.js';
-import { REDDIT_SUBS, REDDIT_SORTS } from '../../config/sources.config.js';
+import {
+  REDDIT_SUBS, REDDIT_SORTS, REDDIT_COUNTRY_SUBS, countryForSub,
+} from '../../config/sources.config.js';
+
+const ALL_SUBS = [...new Set([...REDDIT_SUBS, ...Object.keys(REDDIT_COUNTRY_SUBS)])];
 
 // Reddit bloque l'acces anonyme au .json (403). On rejoue le cookie `loid` (logged-out id, Validité 2 ans) via REDDIT_COOKIE (.env)
 const BROWSER_UA =
@@ -19,15 +23,16 @@ async function fetchSubreddit(sub, sort) {
   const { data } = await client.get(url, {
     headers: { 'User-Agent': BROWSER_UA, Cookie: cookie },
   });
+  const country = countryForSub(sub);
   return data.data.children.map((post) => {
     post.data._sort = sort;
-    return normalizeReddit(post, sub);
+    return normalizeReddit(post, sub, country);
   });
 }
 
 export async function fetchReddit() {
   const results = [];
-  for (const sub of REDDIT_SUBS) {
+  for (const sub of ALL_SUBS) {
     for (const sort of REDDIT_SORTS) {
       const items = await redditLimiter.schedule(() => fetchSubreddit(sub, sort));
       results.push(...items);
