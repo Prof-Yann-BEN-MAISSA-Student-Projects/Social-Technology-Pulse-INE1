@@ -26,7 +26,7 @@ export async function fetchBySource(source) {
 }
 
 export async function fetchRising({ horizon = 6, limit = 8, model = 'baseline' } = {}) {
-  const { data } = await http.get('/api/predictions/rising', { params: { horizon, limit, model } });
+  const { data } = await http.get('/api/predictions/rising', { params: { horizon, limit, model }, timeout: 30000 });
   return data ?? { maturity: {}, rising: [], fading: [] };
 }
 
