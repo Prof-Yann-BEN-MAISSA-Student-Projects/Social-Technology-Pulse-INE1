@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+html, body {
+  background: #0a0e1a;
+  color: #e5e7eb;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+* { -webkit-font-smoothing: antialiased; }
+.mono { font-family: ui-monospace, 'SF Mono', Menlo, monospace; }
+
+.indigo-gradient-text {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.indigo-glow-sm { box-shadow: 0 0 14px -4px rgba(99,102,241,0.5); }
+
+.panel {
+  background: #111827;
+  border: 1px solid #2d3748;
+  border-radius: 14px;
+}
+.panel-hover { transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease; }
+.panel-hover:hover {
+  transform: translateY(-2px);
+  border-color: #3f4a63;
+  box-shadow: 0 6px 24px -12px rgba(0,0,0,.6);
+}
+
+.scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background:#2d3748; border-radius:3px; }
+.scrollbar-thin::-webkit-scrollbar-track { background:transparent; }
+
+@keyframes pulseDot {
+  0%,100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: .55; }
+}
+.dot-pulse { animation: pulseDot 1.8s ease-in-out infinite; }
+.dot-pulse-ring {
+  position:absolute; inset:-4px; border-radius:9999px;
+  border:1px solid currentColor; opacity:.4;
+  animation: pulseRing 1.8s ease-out infinite;
+}
+@keyframes pulseRing {
+  0% { transform: scale(.7); opacity:.6; }
+  100% { transform: scale(1.8); opacity:0; }
+}
+
+@keyframes floatUp { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+.fade-up { animation: floatUp .5s ease both; }
+.fade-up-d2 { animation: floatUp .6s ease .12s both; }
+.fade-up-d3 { animation: floatUp .65s ease .2s both; }
+.fade-up-d4 { animation: floatUp .7s ease .28s both; }
+
+@keyframes feedIn { from { opacity:0; transform: translateY(-8px); max-height:0; } to { opacity:1; transform:none; max-height:200px; } }
+.feed-new { animation: feedIn .45s ease both; }
+
+.bubble { transition: transform .25s ease, filter .25s ease; cursor: pointer; }
+.bubble:hover { transform: scale(1.06); filter: brightness(1.15); }
+
+.tag {
+  display:inline-flex; align-items:center; gap:4px;
+  padding: 2px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 500;
+  background: #1a2233; border: 1px solid #2d3748; color: #c7cdd9;
+}
+
+.kw-link { cursor: pointer; transition: color .15s; }
+.kw-link:hover { color: #c4b5fd; }
+
+.hm-cell { transition: transform .15s; cursor: pointer; }
+.hm-cell:hover { transform: scale(1.4); z-index: 5; outline: 1px solid #6366f1; }
