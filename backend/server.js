@@ -4,6 +4,7 @@ import cors from 'cors';
 import trendsRouter from './src/routes/trends.routes.js';
 import keywordsRouter from './src/routes/keywords.routes.js';
 import statsRouter from './src/routes/stats.routes.js';
+import predictionsRouter from './src/routes/predictions.routes.js';
 import { startPollers, getPollerStatus } from './src/workers/poller.js';
 import { connectDB, isConnected } from './src/services/db.js';
 import { getCounts } from './src/services/store.js';
@@ -31,6 +32,7 @@ app.use(express.json());
 app.use('/api/trends', trendsRouter);
 app.use('/api/keywords', keywordsRouter);
 app.use('/api/stats', statsRouter);
+app.use('/api/predictions', predictionsRouter);
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 

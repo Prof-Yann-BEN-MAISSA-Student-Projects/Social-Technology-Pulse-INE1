@@ -93,29 +93,47 @@ router.get('/top', requireDB, async (req, res) => {
 });
 
 // GET /api/keywords/trending?limit=20
-// Mots-clés en hausse : compare les 24h les plus récentes vs les 24h précédentes
 router.get('/trending', requireDB, async (req, res) => {
   try {
     const limit   = Math.min(parseInt(req.query.limit ?? '20', 10), 100);
     const country = req.query.country ?? null;
-    const now     = Date.now();
     const DAY     = 86_400_000;
 
-    const [recent, previous] = await Promise.all([
-      aggregateWindow(new Date(now - DAY),     new Date(now),         country),
-      aggregateWindow(new Date(now - 2 * DAY), new Date(now - DAY),   country),
+    const dayStr    = (ms) => new Date(ms).toISOString().slice(0, 10);
+    const today     = dayStr(Date.now());
+    const yesterday = dayStr(Date.now() - DAY);
+    const since     = new Date(`${yesterday}T00:00:00.000Z`);
+
+    const match = { createdAt: { $gte: since } };
+    if (country) match.country = country;
+
+    const rows = await Item.aggregate([
+      { $match: match },
+      { $unwind: '$keywords' },
+      {
+        $group: {
+          _id:   { kw: '$keywords', day: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } } },
+          count: { $sum: 1 },
+        },
+      },
     ]);
 
-    const prevMap = new Map(previous.map((k) => [k.keyword, k.count]));
+    const byKw = new Map();
+    for (const r of rows) {
+      const o = byKw.get(r._id.kw) ?? { today: 0, prev: 0 };
+      if (r._id.day === today)          o.today = r.count;
+      else if (r._id.day === yesterday) o.prev  = r.count;
+      byKw.set(r._id.kw, o);
+    }
 
-    const trending = recent
-      .map((k) => {
-        const prev   = prevMap.get(k.keyword) ?? 0;
-        const delta  = k.count - prev;
-        const growth = prev > 0
-          ? +((delta / prev) * 100).toFixed(1)
-          : null;
-        return { ...k, prevCount: prev, delta, growth };
+    const MIN_PREV = 5;
+
+    const trending = [...byKw.entries()]
+      .map(([keyword, o]) => {
+        const count = o.today, prev = o.prev;
+        const delta = count - prev;
+        const growth = prev >= MIN_PREV ? +((delta / prev) * 100).toFixed(1) : null;
+        return { keyword, count, prevCount: prev, delta, growth };
       })
       .filter((k) => k.delta > 0)
       .sort((a, b) => b.delta - a.delta)
@@ -163,16 +181,5 @@ router.get('/:kw/history', requireDB, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-async function aggregateWindow(from, to, country = null) {
-  const match = { createdAt: { $gte: from, $lt: to } };
-  if (country) match.country = country;
-  return Item.aggregate([
-    { $match: match },
-    { $unwind: '$keywords' },
-    { $group: { _id: '$keywords', count: { $sum: 1 } } },
-    { $project: { _id: 0, keyword: '$_id', count: 1 } },
-  ]);
-}
 
 export default router;
